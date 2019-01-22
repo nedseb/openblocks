@@ -953,6 +953,52 @@ public class Workspace extends JLayeredPane implements ISupportMemento, RBParent
         revalidate();
     }
 
+
+    public List<WorkspaceWidget> resetBeforeImport() {
+        //we can't iterate and remove widgets at the same time so
+        //we remove widgets after we've collected all the widgets we want to remove
+        //TreeSet.remove() doesn't always work on the TreeSet, so instead,
+        //we clear and re-add the widgets we want to keep
+        ArrayList<WorkspaceWidget> widgetsToRemove = new ArrayList<WorkspaceWidget>();
+        ArrayList<WorkspaceWidget> widgetsToKeep = new ArrayList<WorkspaceWidget>();
+        for (WorkspaceWidget w : workspaceWidgets) {
+            if (w instanceof Page) {
+                widgetsToRemove.add(w);
+            } else {
+                widgetsToKeep.add(w);
+            }
+        }
+        workspaceWidgets.clear();
+        workspaceWidgets.addAll(widgetsToKeep);
+        workspaceWidgets.add(factory);
+
+        //We now reset the widgets we removed.
+        //Doing this for each one gets costly.
+        //Do not do this for Pages because on repaint,
+        //the Page tries to access its parent.
+/*        for (WorkspaceWidget w : widgetsToRemove) {
+            Container parent = w.getJComponent().getParent();
+            if (w instanceof Page) {
+                ((Page) w).reset();
+            }
+            if (parent != null) {
+                parent.remove(w.getJComponent());
+                parent.validate();
+                parent.repaint();
+            }
+        }*/
+
+        //We now reset, the blockcanvas, the factory, and the renderableblocks
+        blockCanvas.reset();
+        addPageAt(Page.getBlankPage(this), 0, false); //TODO: System expects PAGE_ADDED event
+        factory.reset();
+
+        env.resetAll();
+
+        revalidate();
+        return widgetsToRemove;
+    }
+
     /***********************************
      * State Saving Stuff for Undo/Redo *
      ***********************************/

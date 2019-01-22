@@ -44,6 +44,7 @@ import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathConstants;
 
+import edu.mit.blocks.workspace.*;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -63,9 +64,6 @@ import edu.mit.blocks.codeblocks.SocketRule;
 import edu.mit.blocks.codeblocks.ParamRule;
 import edu.mit.blocks.codeblocks.PolyRule;
 import edu.mit.blocks.codeblocks.StackRule;
-import edu.mit.blocks.workspace.SearchBar;
-import edu.mit.blocks.workspace.SearchableContainer;
-import edu.mit.blocks.workspace.Workspace;
 
 /**
  * Example entry point to OpenBlock application creation.
@@ -401,6 +399,7 @@ public class WorkspaceController {
         }
     }
 
+
     /**
      * Loads a fresh workspace based on the default specifications in the language
      * definition file.  The block canvas will have no live blocks.
@@ -416,6 +415,41 @@ public class WorkspaceController {
         workspaceLoaded = true;
         
     }
+
+    /**
+     * Loads the programming project from the specified file path.
+     * This method assumes that a Language Definition File has already
+     * been specified for this programming project.
+     * @param path String file path of the programming project to load
+     */
+    public void importProjectFromPath(final String path) throws IOException
+    {
+        final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        final DocumentBuilder builder;
+        final Document doc;
+        try {
+            builder = factory.newDocumentBuilder();
+            doc = builder.parse(new File(path));
+
+            // XXX here, we could be strict and only allow valid documents...
+            // validate(doc);
+            final Element projectRoot = doc.getDocumentElement();
+            //load the canvas (or pages and page blocks if any) blocks from the save file
+            //also load drawers, or any custom drawers from file.  if no custom drawers
+            //are present in root, then the default set of drawers is loaded from
+            //langDefRoot
+            //workspace.loadWorkspaceFrom(projectRoot, langDefRoot);
+            PageDrawerLoadingUtils.importPagesAndDrawers(workspace, projectRoot, workspace.getFactoryManager());
+
+            workspaceLoaded = true;
+        } catch (ParserConfigurationException e) {
+            throw new RuntimeException(e);
+        } catch (SAXException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     /**
      * Loads the programming project from the specified file path.
@@ -522,6 +556,17 @@ public class WorkspaceController {
         workspace.reset();
         //clear procedure output information
         ProcedureOutputManager.reset();	//*****
+
+    }
+
+    public List<WorkspaceWidget> resetBeforeImportWorkspace() {
+        //clear all pages and their drawers
+        //clear all drawers and their content
+        //clear all block and renderable block instances
+        List<WorkspaceWidget> result =  workspace.resetBeforeImport();
+        //clear procedure output information
+        ProcedureOutputManager.reset();	//*****
+        return result;
 
     }
 

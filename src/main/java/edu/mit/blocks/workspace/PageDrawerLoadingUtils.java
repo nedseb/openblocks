@@ -182,6 +182,77 @@ public class PageDrawerLoadingUtils {
         }
     }
 
+    public static void importPagesAndDrawers(Workspace workspace, Element root, FactoryManager manager) {
+        List<Page> pageList = new ArrayList<Page>();
+        LinkedHashMap<Page, ArrayList<RenderableBlock>> blocksForPages = new LinkedHashMap<Page, ArrayList<RenderableBlock>>();
+
+
+        NodeList pagesRoot = root.getElementsByTagName("Pages");
+        if (pagesRoot != null) {
+            //isBlankPage denotes if the page being loaded is a default blank page
+            //in other words, the project did not specify any pages for their environment.
+            //EvoBeaker does this
+            boolean isBlankPage = false;
+            Node pagesNode = pagesRoot.item(0);
+            if (pagesNode == null) {
+                return; // short-circuit exit if there's nothing to load
+            }
+            Node opt_item = pagesNode.getAttributes().getNamedItem("drawer-with-page");
+            if (opt_item != null) {
+                Matcher nameMatcher = attrExtractor.matcher(opt_item.toString());
+                if (nameMatcher.find()) {
+                    Workspace.everyPageHasDrawer = nameMatcher.group(1).equals("yes") ? true : false;
+                }
+            }
+            opt_item = pagesNode.getAttributes().getNamedItem("is-blank-page");
+            if (opt_item != null) {
+                Matcher nameMatcher = attrExtractor.matcher(opt_item.toString());
+                if (nameMatcher.find()) {
+                    isBlankPage = nameMatcher.group(1).equals("yes") ? true : false;
+                }
+            }
+
+            // whether pages should show a control to collapse them or not
+            boolean collapsiblePages = getBooleanValue(pagesNode, "collapsible-pages");
+
+            Page page;
+            NodeList pages = pagesNode.getChildNodes();
+            Node pageNode;
+            String pageName;
+            String pageDrawer;
+            Color pageColor;
+            boolean pageInFullView;
+            int pageWidth;
+            String pageId;
+            for (int i = 0; i < pages.getLength(); i++) { //find them
+                pageNode = pages.item(i);
+                if (pageNode.getNodeName().equals("Page")) { // a page entry
+                    pageName = getNodeValue(pageNode, "page-name");
+                    pageColor = getColorValue(pageNode, "page-color");
+                    pageWidth = getIntValue(pageNode, "page-width");
+                    pageDrawer = getNodeValue(pageNode, "page-drawer");
+                    pageInFullView = getBooleanValue(pageNode, "page-infullview");
+                    pageId = getNodeValue(pageNode, "page-id");
+                    page = new Page(workspace, pageName, pageWidth, 0, pageDrawer, pageInFullView, pageColor, collapsiblePages);
+                    page.setPageId(pageId);
+
+                    NodeList pageNodes = pageNode.getChildNodes();
+                    String drawer = null;
+
+                    workspace.addPage(page);
+                    pageList.add(page);
+
+                    blocksForPages.put(page, page.loadPageFrom(pageNode, false));
+                }
+            }
+            //blocks in pages
+            for (Page p : blocksForPages.keySet()) {
+                p.addLoadedBlocks(blocksForPages.get(p), false);
+            }
+        }
+    }
+
+
     public static void loadBlockDrawerSets(Workspace workspace, Element root, FactoryManager manager) {
         Pattern attrExtractor = Pattern.compile("\"(.*)\"");
         Matcher nameMatcher;
